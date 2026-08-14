@@ -10,6 +10,7 @@ ramulator2
 *.so
 
 # Only keep cpu traces locally
+cputraces
 cputraces/
 cputraces.tar.gz
 
