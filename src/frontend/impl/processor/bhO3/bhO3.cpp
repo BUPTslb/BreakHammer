@@ -96,6 +96,7 @@ void BHO3::init() {
     register_stat(m_cores[core_id]->s_insts_recorded).name("insts_recorded_core_{}", core_id);
     register_stat(m_cores[core_id]->s_mem_access_cycles).name("memory_access_cycles_recorded_core_{}", core_id);
     register_stat(m_cores[core_id]->s_mem_requests_issued).name("memory_requests_recorded_core_{}", core_id);
+    register_stat(m_cores[core_id]->s_mem_latency_sample_count).name("memory_latency_sample_count_core_{}", core_id);
     register_stat(m_cores[core_id]->s_attacker_clflush_count).name("attacker_clflush_count_core_{}", core_id);
   }
 }

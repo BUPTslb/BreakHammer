@@ -347,7 +347,7 @@ public:
                 s_policy_sidecar_duration_core[i] += m_clk - m_throttle_begin_clk[i];
             }
             int limit = m_llc->get_blacklist_max_mshrs(i);
-            s_policy_sidecar_finalize_mshr_limit_core[i] = limit; Mm-mm.
+            s_policy_sidecar_finalize_mshr_limit_core[i] = limit;
             if (s_policy_sidecar_finalize_mshr_limit < 0) {
                 s_policy_sidecar_finalize_mshr_limit = limit;
             }

@@ -214,6 +214,7 @@ void BHO3Core::receive(Request& req) {
 
   if (!reached_expected_num_insts && depart != std::numeric_limits<Clk_t>::max()) {
     s_mem_access_cycles += req_duration;
+    s_mem_latency_sample_count++;
     m_last_mem_cycle = depart;
     int lat_bucket = req_duration - (req_duration % m_lat_hist_sens);
     if (m_lat_histogram.find(lat_bucket) == m_lat_histogram.end()) {
