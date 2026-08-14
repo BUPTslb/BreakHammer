@@ -224,6 +224,7 @@ void BHO3Core::receive(Request& req) {
 
   if (m_is_attacker) {
     m_llc->clflush(req.addr);
+    s_attacker_clflush_count++;
   }
 }
 

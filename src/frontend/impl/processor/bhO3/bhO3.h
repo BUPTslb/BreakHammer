@@ -15,8 +15,9 @@ class BHO3 final : public IFrontEnd, public Implementation {
   private:
     ITranslation*  m_translation;
 
-    int m_num_cores = -1;
-    int m_num_blocking_cores = -1;
+	    int m_num_cores = -1;
+	    int m_num_blocking_cores = -1;
+	    size_t m_num_attacker_cores = 0;
     std::vector<BHO3Core*> m_cores;
     BHO3LLC* m_llc;
 

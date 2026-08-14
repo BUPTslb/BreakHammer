@@ -41,6 +41,7 @@ target_sources(
   impl/plugin/panopticon.cpp
   impl/plugin/silver_bullet.cpp
   impl/plugin/dummy_mitigation.cpp
+  impl/plugin/policy_sidecar.cpp
   impl/plugin/throttle_rega.cpp
   impl/plugin/aqua.cpp
 

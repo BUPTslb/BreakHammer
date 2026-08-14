@@ -119,6 +119,7 @@ class BHO3Core: public Clocked<BHO3Core> {
     size_t s_insts_recorded = 0;
     Clk_t  s_mem_access_cycles = 0; 
     size_t s_mem_requests_issued = 0;
+    size_t s_attacker_clflush_count = 0;
 
   public:
     BHO3Core(int id, int ipc, int depth,

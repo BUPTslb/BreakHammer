@@ -19,6 +19,7 @@ void BHO3::init() {
   std::vector<std::string> no_wait_trace_list = param<std::vector<std::string>>("no_wait_traces").desc("Traces that do not block program termination.").default_val(empty_trace);
   m_num_cores = trace_list.size() + no_wait_trace_list.size();
   m_num_blocking_cores = trace_list.size();
+  m_num_attacker_cores = no_wait_trace_list.size();
   
   bool def_traces_cache_only = param<bool>("trace_cache_only").default_val(false);
   bool no_wait_traces_cache_only = param<bool>("no_wait_trace_cache_only").default_val(false);
@@ -80,6 +81,8 @@ void BHO3::init() {
 
   // Register the stats
   register_stat(m_num_expected_insts).name("num_expected_insts");
+  register_stat(m_num_blocking_cores).name("frontend_blocking_core_count");
+  register_stat(m_num_attacker_cores).name("frontend_attacker_core_count");
   register_stat(m_llc->s_llc_eviction).name("llc_eviction");
   register_stat(m_llc->s_llc_read_access).name("llc_read_access");
   register_stat(m_llc->s_llc_write_access).name("llc_write_access");
@@ -93,6 +96,7 @@ void BHO3::init() {
     register_stat(m_cores[core_id]->s_insts_recorded).name("insts_recorded_core_{}", core_id);
     register_stat(m_cores[core_id]->s_mem_access_cycles).name("memory_access_cycles_recorded_core_{}", core_id);
     register_stat(m_cores[core_id]->s_mem_requests_issued).name("memory_requests_recorded_core_{}", core_id);
+    register_stat(m_cores[core_id]->s_attacker_clflush_count).name("attacker_clflush_count_core_{}", core_id);
   }
 }
 
