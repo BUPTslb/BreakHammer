@@ -27,6 +27,7 @@ class Graphene : public IControllerPlugin, public Implementation, public IThrott
     bool m_is_debug = false;
 
     int m_VRR_req_id = -1;
+    int s_num_vrr = 0;
 
     int m_rank_level = -1;
     int m_bank_level = -1;
@@ -89,6 +90,8 @@ class Graphene : public IControllerPlugin, public Implementation, public IThrott
 
       // Initialize spillover counter
       m_spillover_counter = std::vector<int>(m_num_banks_per_rank * m_num_ranks, 0);
+
+      register_stat(s_num_vrr).name("graphene_num_vrr");
     };
 
     void update(bool request_found, ReqBuffer::iterator& req_it) override {
@@ -179,6 +182,7 @@ class Graphene : public IControllerPlugin, public Implementation, public IThrott
               // if yes, schedule preventive refreshes
               Request vrr_req(req_it->addr_vec, m_VRR_req_id);
               m_ctrl->priority_send(vrr_req);
+              s_num_vrr++;
               m_activation_count_table[flat_bank_id][row_id] = m_spillover_counter[flat_bank_id];
 
               increment_operation(flat_bank_id, req_it->source_id);

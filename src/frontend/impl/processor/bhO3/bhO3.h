@@ -29,9 +29,14 @@ class BHO3 final : public IFrontEnd, public Implementation {
     bool llc_deserialize = false;
     std::string llc_deserialization_filename;
 
+    int s_frontend_reached_max_cycles = 0;
+    int s_frontend_all_benign_completed = 0;
+    int s_frontend_termination_reason = 0;
+
   public:
     void init() override;
     void tick() override;
+    void finalize() override;
     void receive(Request& req);
     bool is_finished() override;
     void connect_memory_system(IMemorySystem* memory_system) override;

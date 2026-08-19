@@ -28,6 +28,7 @@ class PARA : public IControllerPlugin, public Implementation, public IThrottleab
     int m_VRR_req_id = -1;
     int m_bank_level = -1;
     int m_row_level = -1;
+    int s_num_vrr = 0;
 
   public:
     void init() override { 
@@ -56,6 +57,8 @@ class PARA : public IControllerPlugin, public Implementation, public IThrottleab
       m_VRR_req_id = m_dram->m_requests("victim-row-refresh");
       m_bank_level = m_dram->m_levels("bank");
       m_row_level = m_dram->m_levels("row");
+
+      register_stat(s_num_vrr).name("para_num_vrr");
     };
 
     void update(bool request_found, ReqBuffer::iterator& req_it) override {
@@ -69,6 +72,7 @@ class PARA : public IControllerPlugin, public Implementation, public IThrottleab
             increment_operation(m_cfg.get_flat_bank_id(*req_it), req_it->source_id);
             Request vrr_req(req_it->addr_vec, m_VRR_req_id);
             m_ctrl->priority_send(vrr_req);
+            s_num_vrr++;
           }
         }
       }

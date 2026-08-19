@@ -71,6 +71,38 @@ target_sources(
   impl/pluginutil/device_config.h
 
   impl/plugin/throttler.cpp
+  impl/plugin/blue_codegen_d675efcd.cpp
+  impl/plugin/blue_codegen_56aee84a.cpp
+  impl/plugin/blue_codegen_390542a6.cpp
+  impl/plugin/blue_codegen_c0e4b3e8.cpp
+  impl/plugin/blue_codegen_25a70193.cpp
+  impl/plugin/blue_codegen_a5afc433.cpp
+  impl/plugin/blue_codegen_85ac3c8d.cpp
+  impl/plugin/blue_codegen_c558d9b1.cpp
+  impl/plugin/blue_codegen_2dd4e335.cpp
+  impl/plugin/blue_codegen_71c5c4ff.cpp
+  impl/plugin/blue_codegen_790aaec5.cpp
+  impl/plugin/blue_codegen_f1d97298.cpp
+  impl/plugin/blue_codegen_e3943233.cpp
+  impl/plugin/blue_codegen_252c8e3d.cpp
+  impl/plugin/blue_codegen_d58a5c5d.cpp
+  impl/plugin/blue_codegen_f3be9e3d.cpp
+  impl/plugin/blue_codegen_fc31b6b3.cpp
+  impl/plugin/blue_codegen_6c2729bc.cpp
+  impl/plugin/blue_codegen_760c6347.cpp
+  impl/plugin/blue_codegen_a5dd520c.cpp
+  impl/plugin/blue_codegen_d3733fe9.cpp
+  impl/plugin/blue_codegen_898c2674.cpp
+  impl/plugin/blue_codegen_00361f34.cpp
+  impl/plugin/blue_codegen_4fd29245.cpp
+  impl/plugin/blue_codegen_6289f4b8.cpp
+  impl/plugin/blue_codegen_4ed20035.cpp
+  impl/plugin/blue_codegen_8a314755.cpp
+  impl/plugin/blue_codegen_44c6c29d.cpp
+  impl/plugin/blue_codegen_7c92cbbf.cpp
+  impl/plugin/blue_codegen_77a96662.cpp
+  impl/plugin/blue_codegen_7d084d61.cpp
+  impl/plugin/blue_codegen_runtime.cpp
   )
 
 target_link_libraries(

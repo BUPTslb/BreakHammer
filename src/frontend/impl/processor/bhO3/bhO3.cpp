@@ -99,6 +99,13 @@ void BHO3::init() {
     register_stat(m_cores[core_id]->s_mem_latency_sample_count).name("memory_latency_sample_count_core_{}", core_id);
     register_stat(m_cores[core_id]->s_attacker_clflush_count).name("attacker_clflush_count_core_{}", core_id);
   }
+  // HammerEVO fixed-horizon evidence: the adapter requires these to certify
+  // that every deployment ran exactly num_max_cycles (benign never completes).
+  register_stat(m_num_max_cycles).name("frontend_configured_max_cycles");
+  register_stat(m_clk).name("frontend_final_cycle");
+  register_stat(s_frontend_reached_max_cycles).name("frontend_reached_max_cycles");
+  register_stat(s_frontend_all_benign_completed).name("frontend_all_benign_completed");
+  register_stat(s_frontend_termination_reason).name("frontend_termination_reason");
 }
 
 void BHO3::tick() {
@@ -153,6 +160,28 @@ BHO3LLC* BHO3::get_llc() {
 
 std::vector<BHO3Core*>& BHO3::get_cores() {
   return m_cores;
+}
+
+void BHO3::finalize() {
+  // HammerEVO fixed-horizon evidence.  reason==1 => max_cycles_capped (the
+  // formal certified horizon); reason==2 => all benign programs completed
+  // (endogenous horizon, not certifiable).
+  bool all_benign_completed = true;
+  for (int i = 0; i < m_num_blocking_cores; i++) {
+    if (!m_cores[i]->completed_expected_insts()) {
+      all_benign_completed = false;
+    }
+  }
+  s_frontend_all_benign_completed = all_benign_completed ? 1 : 0;
+  s_frontend_reached_max_cycles = (m_clk >= m_num_max_cycles) ? 1 : 0;
+  if (s_frontend_reached_max_cycles) {
+    s_frontend_termination_reason = 1;
+  } else if (all_benign_completed) {
+    s_frontend_termination_reason = 2;
+  } else {
+    s_frontend_termination_reason = 0;
+  }
+  IFrontEnd::finalize();
 }
 
 }        // namespace Ramulator

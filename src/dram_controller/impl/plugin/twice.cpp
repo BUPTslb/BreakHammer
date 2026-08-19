@@ -34,6 +34,7 @@ class TWiCeIdeal : public IControllerPlugin, public Implementation, public IThro
     bool m_is_debug = false;
 
     int m_VRR_req_id = -1;
+    int s_num_vrr = 0;
 
     int m_rank_level = -1;
     int m_bank_level = -1;
@@ -84,6 +85,8 @@ class TWiCeIdeal : public IControllerPlugin, public Implementation, public IThro
         std::unordered_map<Addr_t, TwiCeEntry> bank_twice_table;
         m_twice_table.push_back(bank_twice_table);
       }
+
+      register_stat(s_num_vrr).name("twice_num_vrr");
     };
 
     void update(bool request_found, ReqBuffer::iterator& req_it) override {
@@ -154,6 +157,7 @@ class TWiCeIdeal : public IControllerPlugin, public Implementation, public IThro
               // If the act count is greater than the threshold, issue a VRR
               Request vrr_req(req_it->addr_vec, m_VRR_req_id);
               m_ctrl->priority_send(vrr_req);
+              s_num_vrr++;
 
               auto it = m_twice_table[flat_bank_id].find(row_id);
               m_twice_table[flat_bank_id].erase(it);

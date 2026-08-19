@@ -211,11 +211,11 @@ def _install_throttler(plugins: list[dict[str, Any]], args: argparse.Namespace) 
                 "impl": "Throttler",
                 "throttling_implementation": getattr(args, "throttling_implementation", "breakhammer_throttler"),
                 "throttle_type": getattr(args, "breakhammer_throttle_type", BREAKHAMMER_PROFILE["throttle_type"]),
-                "flat_threshold": getattr(args, "breakhammer_flat_threshold", BREAKHAMMER_PROFILE["throttle_flat_thresh"]),
-                "dynamic_threshold": getattr(args, "breakhammer_dynamic_threshold", BREAKHAMMER_PROFILE["throttle_dynamic_thresh"]),
+                "throttle_flat_thresh": getattr(args, "breakhammer_flat_threshold", BREAKHAMMER_PROFILE["throttle_flat_thresh"]),
+                "throttle_dynamic_thresh": getattr(args, "breakhammer_dynamic_threshold", BREAKHAMMER_PROFILE["throttle_dynamic_thresh"]),
                 "window_period_ns": getattr(args, "breakhammer_window_period_ns", BREAKHAMMER_PROFILE["window_period_ns"]),
                 "blacklist_max_mshr": getattr(args, "breakhammer_blacklist_max_mshr", BREAKHAMMER_PROFILE["blacklist_max_mshr"]),
-                "mshr_decrement": getattr(args, "breakhammer_mshr_decrement", BREAKHAMMER_PROFILE["mshr_decrement"]),
+                "blacklist_mshr_decrement": getattr(args, "breakhammer_mshr_decrement", BREAKHAMMER_PROFILE["mshr_decrement"]),
                 "breakhammer_plus": getattr(args, "breakhammer_plus", BREAKHAMMER_PROFILE["breakhammer_plus"]),
             }
         }

@@ -114,6 +114,7 @@ class BHO3Core: public Clocked<BHO3Core> {
    ***********************************************/
   public:
     bool reached_expected_num_insts = false;
+    bool completed_expected_insts() const { return s_insts_retired >= m_num_expected_insts; }
     size_t s_insts_retired = 0; 
     size_t s_cycles_recorded = 0; 
     size_t s_insts_recorded = 0;

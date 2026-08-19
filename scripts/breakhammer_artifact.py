@@ -18,7 +18,10 @@ BREAKHAMMER_PROFILE: dict[str, Any] = {
     "throttle_type": "MEAN",
     "throttle_flat_thresh": 32,
     "throttle_dynamic_thresh": 0.65,
-    "window_period_ns": 64_000_000,
+    # DDR5 refresh window (tREF_W) is 32 ms (BreakHammer paper SS2, citing
+    # JEDEC DDR5).  The paper's TH_window=64 ms reused the DDR4 value; for a
+    # DDR5-VRR simulator the physically correct refresh window is 32 ms.
+    "window_period_ns": 32_000_000,
     "blacklist_max_mshr": 5,
     "mshr_decrement": 1,
     "breakhammer_plus": True,
@@ -76,16 +79,72 @@ def _twice_parameters(nrh: int) -> dict[str, Any]:
     }
 
 
+def _rega_parameters(nrh: int) -> dict[str, Any]:
+    """ThrottleREGA V/T/tRAS derivation from the original BreakHammer artifact.
+
+    ``get_rega_parameters`` derives ``V = ceil(SUBARR_SIZE / tRH)``,
+    ``T = ceil(tRH / SUBARR_SIZE)`` and ``tRAS = ceil(32 + (V-1)*17.5)``.
+    The tRAS term is a DRAM timing override (``DRAM.tRAS``), not a plugin
+    parameter, so it is surfaced via ``d0_spec(...)["dram"]["tRAS"]``.
+    """
+
+    subarray_size = 512
+    threshold = max(1, int(nrh))
+    V = int(ceil(subarray_size / threshold))
+    T = int(ceil(threshold / subarray_size))
+    return {
+        "V": V,
+        "T": T,
+        "tRAS": int(ceil(32 + (V - 1) * 17.5)),
+    }
+
+
+def _rfm_threshold(nrh: int) -> int:
+    """RFM per-bank activation threshold from the original BreakHammer artifact.
+
+    ``get_rfm_parameters`` maps the RowHammer threshold to an RFM threshold via
+    a fixed pair table, falling back to 80 for large thresholds.  Binding
+    ``rfm_thresh = nrh`` directly (as the previous metadata did) made RFM
+    ~51x less sensitive at ``nrh=4096`` (threshold 4096 instead of 80), so the
+    attacker never accumulated enough RFM actions for BreakHammer to throttle.
+    """
+
+    threshold = max(1, int(nrh))
+    for bound, rfm_thresh in ((16, 1), (20, 2), (32, 3), (64, 6), (128, 13), (256, 27), (512, 60)):
+        if threshold <= bound:
+            return rfm_thresh
+    return 80
+
+
+def _para_parameters(nrh: int) -> dict[str, Any]:
+    """PARA probability from the original BreakHammer artifact.
+
+    ``get_para_parameters`` sets ``threshold = 1 - (1e-15) ** (1 / tRH)``.  The
+    previous ``1.0 / nrh`` was ~34x smaller at ``nrh=4096``, making PARA issue
+    victim-row refreshes far less often than the artifact intends.
+    """
+
+    threshold = max(1, int(nrh))
+    probability = 1.0 - (10.0 ** -15) ** (1.0 / threshold)
+    return {"threshold": probability}
+
+
 def _plugins_for(mitigation: str, nrh: int) -> dict[str, Any]:
+    rega = _rega_parameters(nrh)
+    dram: dict[str, Any] = {}
+    if mitigation == "REGA":
+        # REGA's tRAS term is a DRAM timing override, matching the original
+        # add_mitigation: config["MemorySystem"]["DRAM"]["tRAS"] = tRAS.
+        dram["tRAS"] = rega["tRAS"]
     plugins_by_name: dict[str, list[dict[str, Any]]] = {
         "AQUA": [{"ControllerPlugin": {"impl": "AQUA", **_aqua_parameters(nrh)}}],
         "Graphene": [{"ControllerPlugin": {"impl": "Graphene", **_graphene_parameters(nrh)}}],
         "Hydra": [{"ControllerPlugin": {"impl": "Hydra", **_hydra_parameters(nrh)}}],
-        "PARA": [{"ControllerPlugin": {"impl": "PARA", "threshold": 1.0 / max(1, nrh)}}],
-        "REGA": [{"ControllerPlugin": {"impl": "ThrottleREGA", "V": nrh}}],
+        "PARA": [{"ControllerPlugin": {"impl": "PARA", **_para_parameters(nrh)}}],
+        "REGA": [{"ControllerPlugin": {"impl": "ThrottleREGA", "V": rega["V"], "T": rega["T"]}}],
         "RFM": [
             {"ControllerPlugin": {"impl": "ThrottleRFM"}},
-            {"ControllerPlugin": {"impl": "RFMManager", "rfm_thresh": nrh, "rfm_plus": False}},
+            {"ControllerPlugin": {"impl": "RFMManager", "rfm_thresh": _rfm_threshold(nrh), "rfm_plus": False}},
         ],
         "TWiCe-Ideal": [{"ControllerPlugin": {"impl": "TWiCe-Ideal", **_twice_parameters(nrh)}}],
         "Dummy": [{"ControllerPlugin": {"impl": "DummyMitigation"}}],
@@ -96,7 +155,7 @@ def _plugins_for(mitigation: str, nrh: int) -> dict[str, Any]:
         "controller_impl": "BHDRAMController",
         "scheduler_impl": "BHScheduler",
         "plugins": deepcopy(plugins_by_name.get(mitigation, plugins_by_name["Dummy"])),
-        "dram": {},
+        "dram": dram,
     }
 
 

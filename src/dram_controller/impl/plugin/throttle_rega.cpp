@@ -18,6 +18,8 @@ private:
     int m_T = -1;
     int m_V = -1;
 
+    int s_num_refresh = 0;
+
 public:
     void init() override {
         m_T = param<int>("T").default_val(1);
@@ -33,6 +35,8 @@ public:
         for (int i = 0; i < m_thread_acts.size(); i++) {
             m_thread_acts[i] = 0;
         }
+
+        register_stat(s_num_refresh).name("rega_num_refresh");
     }
 
     void update(bool request_found, ReqBuffer::iterator& req_it) override {
@@ -58,12 +62,14 @@ public:
         // No need to perform thread_acts mental gymnastic for T = 1
         if (m_T == 1) {
             m_all_bank_ref_ctr.increment_all(thread_id);
+            s_num_refresh++;
             return;
         }
 
         m_thread_acts[thread_id]++;
         if (m_thread_acts[thread_id] == m_T) {
             m_all_bank_ref_ctr.increment_all(thread_id);
+            s_num_refresh++;
             m_thread_acts[thread_id] = 0;
         }
     }
