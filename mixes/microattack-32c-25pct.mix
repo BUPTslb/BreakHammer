@@ -1,0 +1,2 @@
+# 32-thread 25% coalition: 24 benign (train) + 8 attacker (control group)
+Mix0,MMMMMMMMMMMMMMMMMMMMMMMMAAAAAAAA,429.mcf,470.lbm,462.libquantum,459.GemsFDTD,434.zeusmp,433.milc,437.leslie3d,450.soplex,483.xalancbmk,482.sphinx3,471.omnetpp,473.astar,436.cactusADM,ycsb_bserver,ycsb_cserver,wc_map0,wc_8443,ycsb_dserver,ycsb_abgsave,435.gromacs,401.bzip2,458.sjeng,445.gobmk,grep_map0,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace

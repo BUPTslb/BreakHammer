@@ -28,6 +28,13 @@ breakhammer_artifact.tar
 ae_results/*
 # Do not ignore directories within ae_results/
 !ae_results/*/
+
+# HammerEVO-generated blue-codegen sources: canonical copies live under
+# results/<run>/blue-codegen-src/; they are staged here only at build time.
+src/dram_controller/impl/plugin/blue_codegen_*.cpp
+src/dram_controller/impl/plugin/blue_codegen_runtime.h
+src/dram_controller/impl/plugin/blue_codegen_runtime.cpp
+src/dram_controller/impl/plugin/blue_codegen_runtime.cpp.o
 # Ignore everything in subdirectories of ae_results/
 ae_results/*/*
 !ae_results/_plots/*

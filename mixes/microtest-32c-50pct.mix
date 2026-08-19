@@ -1,0 +1,6 @@
+# HELD-OUT TEST SET mix (v2: identity-exclusive, difficulty-stratified).
+# 32-thread cloud node, 16 benign (M) + 16 attacker (A).  Benign traces are the
+# RESERVED test set (configs/trace-splits.json): all SPEC2017 + highest-MPKI
+# cloud, spanning the full density spectrum.  NOT used by evolution.  Enable
+# only via --allow-test-set with configs/blue-generalization-cases-test.json.
+Mix0,MMMMMMMMMMMMMMMMAAAAAAAAAAAAAAAA,549.fotonik3d,510.parest,tpch2,tpch17,tpcc64,ycsb_eserver,557.xz,523.xalancbmk,508.namd,531.deepsjeng,526.blender,541.leela,519.lbm,505.mcf,520.omnetpp,507.cactuBSSN,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace

@@ -1,0 +1,2 @@
+# 32-thread 50% coalition: 16 heterogeneous benign (train, spans density) + 16 attacker
+Mix0,MMMMMMMMMMMMMMMMAAAAAAAAAAAAAAAA,429.mcf,470.lbm,462.libquantum,459.GemsFDTD,434.zeusmp,433.milc,437.leslie3d,450.soplex,483.xalancbmk,482.sphinx3,471.omnetpp,473.astar,436.cactusADM,ycsb_bserver,ycsb_cserver,wc_map0,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace,atk1.trace
