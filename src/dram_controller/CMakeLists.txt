@@ -1,5 +1,43 @@
 add_library(ramulator-controller OBJECT)
 
+# Bind the QoS datapath reported at runtime to the exact scheduler and LLC
+# sources that implement it.  A matched experiment can therefore distinguish
+# a genuinely loaded one-bit QoS/aging comparator from a stale shared library.
+set(HAMMEREVO_QOS_LLC_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../frontend/impl/processor/bhO3/bhllc.cpp")
+set(HAMMEREVO_QOS_LLC_HEADER
+    "${CMAKE_CURRENT_SOURCE_DIR}/../frontend/impl/processor/bhO3/bhllc.h")
+set(HAMMEREVO_BH_QOS_SCHEDULER_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/impl/scheduler/bh_scheduler.cpp")
+set(HAMMEREVO_PRAC_QOS_SCHEDULER_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/impl/scheduler/prac_scheduler.cpp")
+set_property(
+  DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${HAMMEREVO_QOS_LLC_SOURCE}"
+  "${HAMMEREVO_QOS_LLC_HEADER}"
+  "${HAMMEREVO_BH_QOS_SCHEDULER_SOURCE}"
+  "${HAMMEREVO_PRAC_QOS_SCHEDULER_SOURCE}"
+)
+file(SHA256 "${HAMMEREVO_QOS_LLC_SOURCE}" HAMMEREVO_QOS_LLC_SOURCE_SHA256)
+file(SHA256 "${HAMMEREVO_QOS_LLC_HEADER}" HAMMEREVO_QOS_LLC_HEADER_SHA256)
+file(SHA256 "${HAMMEREVO_BH_QOS_SCHEDULER_SOURCE}"
+     HAMMEREVO_BH_QOS_SCHEDULER_SOURCE_SHA256)
+file(SHA256 "${HAMMEREVO_PRAC_QOS_SCHEDULER_SOURCE}"
+     HAMMEREVO_PRAC_QOS_SCHEDULER_SOURCE_SHA256)
+string(
+  SHA256 HAMMEREVO_BH_QOS_DATAPATH_SHA256
+  "${HAMMEREVO_BH_QOS_SCHEDULER_SOURCE_SHA256}:${HAMMEREVO_QOS_LLC_SOURCE_SHA256}:${HAMMEREVO_QOS_LLC_HEADER_SHA256}"
+)
+string(
+  SHA256 HAMMEREVO_PRAC_QOS_DATAPATH_SHA256
+  "${HAMMEREVO_PRAC_QOS_SCHEDULER_SOURCE_SHA256}:${HAMMEREVO_QOS_LLC_SOURCE_SHA256}:${HAMMEREVO_QOS_LLC_HEADER_SHA256}"
+)
+target_compile_definitions(
+  ramulator-controller PRIVATE
+  HAMMEREVO_BH_QOS_DATAPATH_SHA256="${HAMMEREVO_BH_QOS_DATAPATH_SHA256}"
+  HAMMEREVO_PRAC_QOS_DATAPATH_SHA256="${HAMMEREVO_PRAC_QOS_DATAPATH_SHA256}"
+)
+
 target_sources(
   ramulator-controller PRIVATE
   bhcontroller.h 
@@ -71,7 +109,7 @@ target_sources(
   impl/pluginutil/device_config.h
 
   impl/plugin/throttler.cpp
-  impl/plugin/blue_codegen_ca8768ea.cpp
+  impl/plugin/blue_codegen_d9ef2381.cpp
   impl/plugin/blue_codegen_runtime.cpp
   )
 

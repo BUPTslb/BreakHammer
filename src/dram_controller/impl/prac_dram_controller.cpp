@@ -287,7 +287,10 @@ private:
         bool request_found = false;
         Clk_t next_recovery_clk = m_prac->next_recovery_cycle();
         // 2.1    First, check the act buffer to serve requests that are already activating (avoid useless ACTs)
-        if (req_it = m_scheduler->get_best_request(m_active_buffer); req_it != m_active_buffer.end()) { 
+        if (req_it = m_scheduler->get_best_request(
+                m_active_buffer, true,
+                &m_active_buffer, &m_read_buffer, &m_write_buffer);
+            req_it != m_active_buffer.end()) {
             bool fits = m_clk + m_prac->min_cycles_with_preall(req_it) < next_recovery_clk;
             if (fits && m_dram->check_ready(req_it->command, req_it->addr_vec)) {
                 request_found = true;
@@ -329,7 +332,10 @@ private:
                 // Query the write policy to decide which buffer to serve
                 set_write_mode();
                 auto& buffer = m_is_write_mode ? m_write_buffer : m_read_buffer;
-                if (req_it = m_scheduler->get_best_request(buffer); req_it != buffer.end()) {
+                if (req_it = m_scheduler->get_best_request(
+                        buffer, false,
+                        &m_active_buffer, &m_read_buffer, &m_write_buffer);
+                    req_it != buffer.end()) {
                     bool fits = m_clk + m_prac->min_cycles_with_preall(req_it) < next_recovery_clk;
                     request_found = fits && m_dram->check_ready(req_it->command, req_it->addr_vec);
                     req_buffer = &buffer;

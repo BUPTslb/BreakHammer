@@ -1,6 +1,9 @@
+#include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <fstream>
+#include <limits>
 
 #include <spdlog/spdlog.h>
 
@@ -114,6 +117,47 @@ BHO3Core::BHO3Core(int id, int ipc, int depth, size_t num_expected_insts,
 m_id(id), m_window(ipc, depth), m_trace(trace_path),
 m_num_expected_insts(num_expected_insts), m_num_max_cycles(num_max_cycles), m_translation(translation),
 m_llc(llc), m_lat_hist_sens(lat_hist_sens), m_is_attacker(is_attacker), m_spec_type(spec_type) {
+  // Register every trace entry that could possibly be reached within this
+  // core's fixed execution horizon. StablePerCoreTranslation uses this
+  // preload pass to make VPN-to-PPN allocation independent of runtime cache
+  // hits, stalls, and request interleavings across matched attack/pure-benign
+  // deployments. A complete traversal is sufficient when a trace wraps,
+  // because later iterations contain no new addresses.
+  if (m_translation) {
+    const uint64_t fetch_width = (uint64_t) std::max(1, ipc);
+    const uint64_t depth_slack = (uint64_t) std::max(0, depth);
+    const uint64_t max_u64 = std::numeric_limits<uint64_t>::max();
+    const uint64_t cycle_instruction_bound =
+      num_max_cycles > (max_u64 - depth_slack) / fetch_width
+      ? max_u64
+      : num_max_cycles * fetch_width + depth_slack;
+    const uint64_t completion_instruction_bound =
+      num_expected_insts > max_u64 - depth_slack
+      ? max_u64
+      : (uint64_t) num_expected_insts + depth_slack;
+    const uint64_t instruction_bound = std::min(
+      cycle_instruction_bound,
+      completion_instruction_bound
+    );
+    uint64_t represented_instructions = 0;
+    for (const auto& trace_inst : m_trace.m_trace) {
+      if (trace_inst.load_addr != -1) {
+        m_translation->register_address(m_id, trace_inst.load_addr);
+      }
+      if (trace_inst.store_addr != -1) {
+        m_translation->register_address(m_id, trace_inst.store_addr);
+      }
+      const uint64_t bubbles =
+        (uint64_t) std::max(0, trace_inst.bubble_count);
+      const uint64_t trace_instructions = bubbles + 1;
+      if (represented_instructions >= instruction_bound
+          || trace_instructions >= instruction_bound - represented_instructions) {
+        break;
+      }
+      represented_instructions += trace_instructions;
+    }
+  }
+
   // Fetch the instructions and addresses for tick 0
   auto inst = m_trace.get_next_inst();
   m_num_bubbles = inst.bubble_count;

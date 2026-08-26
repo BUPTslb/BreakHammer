@@ -6,6 +6,10 @@
 #include <unordered_map>
 #include <iostream>
 #include <fstream>
+#include <functional>
+#include <cstdint>
+#include <limits>
+#include <array>
 
 #include "base/clocked.h"
 #include "base/debug.h"
@@ -57,6 +61,103 @@ class BHO3LLC : public Clocked<BHO3LLC> {
     std::vector<int> m_allocated_mshrs;
     std::vector<int> m_blacklist_max_mshrs;
     std::vector<bool> m_blacklist_status;
+    int m_num_cores = 0;
+
+    // HammerEVO D1 admission actuator.  It limits the rate of NEW LLC misses
+    // per protection-domain principal.  Cache hits and requests that merge
+    // into an existing MSHR never consume a token.
+    struct AdmissionBucket {
+      bool enabled = false;
+      uint64_t tokens = 0;
+      uint64_t refill_tokens = 1;
+      uint64_t refill_period_cycles = 1;
+      uint64_t burst = 1;
+      uint64_t max_denial_cycles = 1;
+      Clk_t last_refill = 0;
+      Clk_t last_admit = 0;
+      Clk_t denial_begin = std::numeric_limits<Clk_t>::max();
+      uint64_t admitted = 0;
+      uint64_t denied = 0;
+      uint64_t forced_liveness = 0;
+      uint64_t refills = 0;
+      uint64_t max_observed_denial_cycles = 0;
+    };
+    std::vector<int> m_admission_principal_by_core;
+    std::vector<AdmissionBucket> m_admission_buckets;
+    // Four trusted launch-entitlement classes share four aggregate buckets.
+    // A bounded source-pending bitmap and round-robin pointer make grant order
+    // independent of the opaque-principal partition. Source IDs are fixed
+    // hardware request ports and cannot be forged by changing that partition.
+    static constexpr int kAdmissionServiceClasses = 4;
+    static constexpr int kAdmissionPrincipalLimit = 32;
+    static constexpr int kAdmissionSourceLimit = 32;
+    std::vector<int> m_admission_service_class_by_core;
+    std::array<AdmissionBucket, kAdmissionServiceClasses>
+      m_service_class_admission_buckets{};
+    std::array<uint32_t, kAdmissionServiceClasses>
+      m_service_class_pending_sources{};
+    std::array<int, kAdmissionServiceClasses>
+      m_service_class_rr_next_source{};
+    // A bounded pre-allocation escrow for service-class burst detection.
+    // Unlike the successful-new-miss observer, this gate sees a request before
+    // it irreversibly allocates an MSHR.  It keeps at most four exact
+    // (source, cache-line) fingerprints so retries do not inflate the burst.
+    // Sparse traffic is released after a finite deadline; a threshold crossing
+    // atomically starts the existing split-invariant class admission bucket
+    // with zero tokens.
+    static constexpr int kServiceClassProbationEntries = 4;
+    enum class ServiceClassProbationMode : uint8_t {
+      Disabled = 0,
+      Armed = 1,
+      Collecting = 2,
+      Bypass = 3,
+      Limited = 4,
+    };
+    struct ServiceClassProbationGate {
+      bool enabled = false;
+      ServiceClassProbationMode mode = ServiceClassProbationMode::Disabled;
+      uint8_t distinct_threshold = kServiceClassProbationEntries;
+      uint8_t distinct_count = 0;
+      uint64_t deadline_cycles = 1;
+      uint64_t principal_service_epoch_cycles = 0;
+      uint64_t initial_tokens_on_limit = 0;
+      uint64_t refill_tokens = 1;
+      uint64_t refill_period_cycles = 1;
+      uint64_t burst = 1;
+      uint64_t max_denial_cycles = 1;
+      Clk_t first_seen = 0;
+      Clk_t first_limited = 0;
+      Clk_t service_epoch_begin = 0;
+      uint32_t served_principals = 0;
+      bool oldest_release_pending = false;
+      std::array<Addr_t, kServiceClassProbationEntries> line_addr{};
+      std::array<int, kServiceClassProbationEntries> source_id{};
+      uint64_t held_requests = 0;
+      uint64_t duplicate_retries = 0;
+      uint64_t deadline_bypasses = 0;
+      uint64_t limited_transitions = 0;
+      uint64_t service_epoch_resets = 0;
+      uint64_t service_epoch_denials = 0;
+      uint64_t oldest_release_denials = 0;
+      uint64_t oldest_releases = 0;
+      uint64_t max_observed_hold_cycles = 0;
+    };
+    std::array<ServiceClassProbationGate, kAdmissionServiceClasses>
+      m_service_class_probation_gates{};
+    // One scheduler QoS bit per source. Class 0 is normal service; class 1 is
+    // bounded background service. Policies address opaque principals, and
+    // the LLC expands that decision to member cores using the same principal
+    // map as admission control.
+    std::vector<int> m_qos_class_by_core;
+    // Optional D1 observer: successful NEW-MSHR allocations per opaque
+    // protection domain. It is disabled unless the loaded strategy declares
+    // and uses the corresponding capability.
+    bool m_new_miss_observer_enabled = false;
+    std::vector<uint64_t> m_new_miss_allocations_principal;
+    // Optional registered event path from the LLC allocation point to the
+    // generated D1 FSM. The callback models a valid+source-id hardware event;
+    // it is installed only when the candidate declares that capability.
+    std::function<void(int)> m_new_miss_event_callback;
     // BH Changes End
 
   public:
@@ -80,6 +181,15 @@ class BHO3LLC : public Clocked<BHO3LLC> {
     int s_llc_eviction = 0;
     int s_llc_mshr_unavailable = 0;
     int s_llc_mshr_blacklisted = 0;
+    uint64_t s_llc_admission_admitted = 0;
+    uint64_t s_llc_admission_denied = 0;
+    uint64_t s_llc_admission_forced_liveness = 0;
+    uint64_t s_llc_admission_refills = 0;
+    uint64_t s_llc_admission_max_denial_cycles = 0;
+    std::vector<uint64_t> s_llc_admission_admitted_core;
+    std::vector<uint64_t> s_llc_admission_denied_core;
+    std::vector<int> s_llc_qos_class_core;
+    std::vector<uint64_t> s_llc_qos_class_changes_core;
     
     // BH Changes Begin
     int m_bh_max_mshr = -1;
@@ -113,6 +223,110 @@ class BHO3LLC : public Clocked<BHO3LLC> {
     // Currently not switching the following to setter for backwards portability.
     void add_blacklist(int source_id);
     void erase_blacklist(int source_id);
+    void configure_admission_principals(const std::vector<int>& principal_by_core);
+    void configure_admission_service_classes(
+      const std::vector<int>& service_class_by_core
+    );
+    void configure_new_miss_observer(bool enabled);
+    void configure_new_miss_event_callback(std::function<void(int)> callback);
+    void set_admission_budget(
+      int principal,
+      uint64_t refill_tokens,
+      uint64_t refill_period_cycles,
+      uint64_t burst,
+      uint64_t max_denial_cycles
+    );
+    void clear_admission_budget(int principal);
+    void set_admission_tokens(int principal, uint64_t tokens);
+    uint64_t get_admission_tokens(int principal);
+    uint64_t get_admission_admitted(int principal) const;
+    uint64_t get_admission_denied(int principal) const;
+    uint64_t get_admission_forced_liveness(int principal) const;
+    uint64_t get_admission_refills(int principal) const;
+    uint64_t get_admission_max_denial_cycles(int principal) const;
+    void set_service_class_admission_budget(
+      int service_class,
+      uint64_t refill_tokens,
+      uint64_t refill_period_cycles,
+      uint64_t burst,
+      uint64_t max_denial_cycles
+    );
+    void clear_service_class_admission_budget(int service_class);
+    void set_service_class_admission_tokens(
+      int service_class, uint64_t tokens
+    );
+    uint64_t get_service_class_admission_tokens(int service_class);
+    uint64_t get_service_class_admission_admitted(int service_class) const;
+    uint64_t get_service_class_admission_denied(int service_class) const;
+    uint64_t get_service_class_admission_forced_liveness(
+      int service_class
+    ) const;
+    uint64_t get_service_class_admission_refills(int service_class) const;
+    uint64_t get_service_class_admission_max_denial_cycles(
+      int service_class
+    ) const;
+    void arm_service_class_probation_gate(
+      int service_class,
+      uint64_t distinct_threshold,
+      uint64_t deadline_cycles,
+      uint64_t principal_service_epoch_cycles,
+      uint64_t initial_tokens_on_limit,
+      uint64_t refill_tokens,
+      uint64_t refill_period_cycles,
+      uint64_t burst,
+      uint64_t max_denial_cycles
+    );
+    void clear_service_class_probation_gate(int service_class);
+    uint64_t get_service_class_probation_mode(int service_class) const;
+    uint64_t get_service_class_probation_distinct_count(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_distinct_threshold(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_deadline_cycles(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_refill_period_cycles(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_service_epoch_cycles(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_initial_tokens(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_held(int service_class) const;
+    uint64_t get_service_class_probation_duplicate_retries(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_deadline_bypasses(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_limited_transitions(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_service_epoch_resets(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_service_epoch_denials(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_oldest_release_denials(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_oldest_releases(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_max_hold_cycles(
+      int service_class
+    ) const;
+    uint64_t get_service_class_probation_first_limited_cycle(
+      int service_class
+    ) const;
+    uint64_t get_new_miss_allocations(int principal) const;
+    void set_principal_qos_class(int principal, int qos_class);
+    int get_qos_class(int source_id) const;
     bool clflush(Addr_t addr);
     // BH Changes End
   private:
@@ -128,6 +342,9 @@ class BHO3LLC : public Clocked<BHO3LLC> {
     CacheSet_t::iterator check_set_hit(CacheSet_t& set, Addr_t addr);
     MSHR_t::iterator check_mshr_hit(Addr_t addr);
     std::unordered_set<uint32_t>& get_bank_blacklist(Request& req);
+    void refill_admission_bucket(AdmissionBucket& bucket);
+    bool admit_new_miss(const Request& req);
+    void record_new_miss_allocation(int source_id);
 };
 
 }        // namespace Ramulator

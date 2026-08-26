@@ -90,6 +90,11 @@ void BHO3::init() {
   register_stat(m_llc->s_llc_write_misses).name("llc_write_misses");
   register_stat(m_llc->s_llc_mshr_unavailable).name("llc_mshr_unavailable");
   register_stat(m_llc->s_llc_mshr_blacklisted).name("llc_mshr_blacklisted");
+  register_stat(m_llc->s_llc_admission_admitted).name("llc_admission_admitted");
+  register_stat(m_llc->s_llc_admission_denied).name("llc_admission_denied");
+  register_stat(m_llc->s_llc_admission_forced_liveness).name("llc_admission_forced_liveness");
+  register_stat(m_llc->s_llc_admission_refills).name("llc_admission_refills");
+  register_stat(m_llc->s_llc_admission_max_denial_cycles).name("llc_admission_max_denial_cycles");
   
   for (int core_id = 0; core_id < m_cores.size(); core_id++) {
     register_stat(m_cores[core_id]->s_cycles_recorded).name("cycles_recorded_core_{}", core_id);
@@ -98,6 +103,10 @@ void BHO3::init() {
     register_stat(m_cores[core_id]->s_mem_requests_issued).name("memory_requests_recorded_core_{}", core_id);
     register_stat(m_cores[core_id]->s_mem_latency_sample_count).name("memory_latency_sample_count_core_{}", core_id);
     register_stat(m_cores[core_id]->s_attacker_clflush_count).name("attacker_clflush_count_core_{}", core_id);
+    register_stat(m_llc->s_llc_admission_admitted_core[core_id]).name("llc_admission_admitted_core_{}", core_id);
+    register_stat(m_llc->s_llc_admission_denied_core[core_id]).name("llc_admission_denied_core_{}", core_id);
+    register_stat(m_llc->s_llc_qos_class_core[core_id]).name("llc_qos_class_core_{}", core_id);
+    register_stat(m_llc->s_llc_qos_class_changes_core[core_id]).name("llc_qos_class_changes_core_{}", core_id);
   }
   // HammerEVO fixed-horizon evidence: the adapter requires these to certify
   // that every deployment ran exactly num_max_cycles (benign never completes).

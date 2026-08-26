@@ -19,6 +19,19 @@ class ITranslation {
   RAMULATOR_REGISTER_INTERFACE(ITranslation, "Translation", "Interface for translation virtual address to physical address.")   
   public:
     /**
+     * @brief Registers a virtual address before simulation starts.
+     *
+     * Order-independent translation implementations may use the registered
+     * horizon-reachable working set to construct a deterministic mapping
+     * before the first request is translated. Implementations that do not
+     * need a preload pass can ignore it.
+     */
+    virtual void register_address(int source_id, Addr_t addr) {
+      (void) source_id;
+      (void) addr;
+    };
+
+    /**
      * @brief    Performs address translation for the request req.
      * 
      */

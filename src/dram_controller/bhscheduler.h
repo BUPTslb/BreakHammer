@@ -17,6 +17,19 @@ class IBHScheduler {
     virtual void tick() = 0;
     virtual ReqBuffer::iterator compare(ReqBuffer::iterator req1, ReqBuffer::iterator req2) = 0;
     virtual ReqBuffer::iterator get_best_request(ReqBuffer& buffer) = 0;
+    virtual ReqBuffer::iterator get_best_request(
+      ReqBuffer& buffer,
+      bool is_active_buffer,
+      ReqBuffer* active_buffer,
+      ReqBuffer* read_buffer,
+      ReqBuffer* write_buffer
+    ) {
+      (void) is_active_buffer;
+      (void) active_buffer;
+      (void) read_buffer;
+      (void) write_buffer;
+      return get_best_request(buffer);
+    }
 };
 
 }       // namespace Ramulator

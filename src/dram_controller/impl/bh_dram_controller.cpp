@@ -242,7 +242,10 @@ class BHDRAMController final : public IBHDRAMController, public Implementation {
     bool schedule_request(ReqBuffer::iterator& req_it, ReqBuffer*& req_buffer) {
       bool request_found = false;
       // 2.1    First, check the act buffer to serve requests that are already activating (avoid useless ACTs)
-      if (req_it = m_scheduler->get_best_request(m_active_buffer); req_it != m_active_buffer.end()) { 
+      if (req_it = m_scheduler->get_best_request(
+            m_active_buffer, true,
+            &m_active_buffer, &m_read_buffer, &m_write_buffer);
+          req_it != m_active_buffer.end()) {
         if (m_dram->check_ready(req_it->command, req_it->addr_vec)) {
           request_found = true;
           req_buffer = &m_active_buffer;
@@ -267,7 +270,10 @@ class BHDRAMController final : public IBHDRAMController, public Implementation {
           // Query the write policy to decide which buffer to serve
           set_write_mode();
           auto& buffer = m_is_write_mode ? m_write_buffer : m_read_buffer;
-          if (req_it = m_scheduler->get_best_request(buffer); req_it != buffer.end()) {
+          if (req_it = m_scheduler->get_best_request(
+                buffer, false,
+                &m_active_buffer, &m_read_buffer, &m_write_buffer);
+              req_it != buffer.end()) {
             request_found = m_dram->check_ready(req_it->command, req_it->addr_vec);
             req_buffer = &buffer;
           }
