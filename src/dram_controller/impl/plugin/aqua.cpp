@@ -9,6 +9,7 @@
 #include "translation/translation.h"
 #include "addr_mapper/impl/rit.h"
 #include "dram_controller/impl/plugin/throttleable.h"
+#include "dram_controller/impl/plugin/d0_pressure_sideband.h"
 #include "dram_controller/impl/pluginutil/device_config.h"
 
 namespace Ramulator {
@@ -28,6 +29,13 @@ class AQUA : public IControllerPlugin, public Implementation, public IThrottleab
     int m_num_fpt_entries = -1;
     int m_num_qrows_per_bank = -1;
     int m_art_threshold = -1;
+    // APS sideband tiers (hardware extension 167c1e5c, 2026-09-04),
+    // derived from AQUA's own art_threshold so the export carries AQUA's
+    // native pressure notion: tier1 = T/32, tier2 = T/8, tier3 = T.
+    // Pure observation: migration decisions below never read these.
+    int m_aps_tier1 = -1;
+    int m_aps_tier2 = -1;
+    int m_aps_tier3 = -1;
     int m_reset_period_ns = -1;
     Clk_t m_reset_period_clk = -1;
     bool m_is_debug = false;
@@ -112,6 +120,12 @@ class AQUA : public IControllerPlugin, public Implementation, public IThrottleab
       }
       // Initialize spillover counter
       m_spillover_counter = std::vector<int>(m_num_banks_per_rank * m_num_ranks, 0);
+      // APS tiers from the deployed threshold (>=1, strictly increasing).
+      m_aps_tier3 = m_art_threshold;
+      m_aps_tier2 = std::max(1, m_art_threshold / 8);
+      m_aps_tier1 = std::max(1, m_art_threshold / 32);
+      if (m_aps_tier2 >= m_aps_tier3) m_aps_tier2 = std::max(1, m_aps_tier3 - 1);
+      if (m_aps_tier1 >= m_aps_tier2) m_aps_tier1 = std::max(1, m_aps_tier2 - 1);
       // Initialize row indirection table in the addr_mapper
       m_addr_mapper->init_rit(m_num_banks_per_rank * m_num_ranks, m_num_fpt_entries * 2);
 
@@ -167,6 +181,7 @@ class AQUA : public IControllerPlugin, public Implementation, public IThrottleab
           }
 
           // Check HRT
+          int aps_old_count = 0;  // sidecar observation only (see below)
           if (m_aggressor_row_tracker[flat_bank_id].find(row_id) == m_aggressor_row_tracker[flat_bank_id].end()) {
             if (m_is_debug) {
               std::cout << "  └  " << "row " << row_id << " not in HRT." << std::endl;
@@ -220,10 +235,11 @@ class AQUA : public IControllerPlugin, public Implementation, public IThrottleab
               }
             }
           } else {
-            if (m_is_debug) { 
+            if (m_is_debug) {
               std::cout << "  └  " << "row " << row_id << " in HRT. Incrementing its counter." << std::endl;
             }
             // if row in table, increment its activation count
+            aps_old_count = m_aggressor_row_tracker[flat_bank_id][row_id];
             m_aggressor_row_tracker[flat_bank_id][row_id] += 1;
           }
           // dump HRT for debug
@@ -236,6 +252,18 @@ class AQUA : public IControllerPlugin, public Implementation, public IThrottleab
           //   std::cout << "Spillover counter: " << m_spillover_counter[flat_bank_id] << std::endl;
           //   std::cout << "==========================" << std::endl;
           // }
+
+          // APS sideband export (hardware extension 167c1e5c, 2026-09-04):
+          // pure observation.  The tier crossing test IS the dedup -- counts
+          // only rise inside a reset epoch, so each tier fires at most once
+          // per row per epoch -- and every migration decision below is
+          // bit-identical whether or not a sink is registered.
+          d0_pressure_sideband_notify_tiers(
+              aps_old_count,
+              m_aggressor_row_tracker[flat_bank_id][row_id],
+              m_aps_tier1, m_aps_tier2, m_aps_tier3,
+              d0_pressure_row_tag((uint32_t) flat_bank_id, (uint32_t) row_id),
+              (uint8_t) flat_bank_id, (int32_t) req_it->source_id);
 
           // row is now in the table, check if the count exceeds the threshold
           if (m_is_debug) {

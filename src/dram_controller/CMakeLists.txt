@@ -82,6 +82,8 @@ target_sources(
   impl/plugin/policy_sidecar.cpp
   impl/plugin/throttle_rega.cpp
   impl/plugin/aqua.cpp
+  impl/plugin/d0_pressure_sideband.cpp
+  impl/plugin/d0_pressure_sideband.h
 
   impl/plugin/bliss.cpp
   impl/plugin/bliss.h
@@ -109,7 +111,7 @@ target_sources(
   impl/pluginutil/device_config.h
 
   impl/plugin/throttler.cpp
-  impl/plugin/blue_codegen_e7fd4d12.cpp
+  impl/plugin/blue_codegen_585a103d.cpp
   impl/plugin/blue_codegen_runtime.cpp
   )
 
