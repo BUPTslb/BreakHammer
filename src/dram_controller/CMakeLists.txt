@@ -111,7 +111,6 @@ target_sources(
   impl/pluginutil/device_config.h
 
   impl/plugin/throttler.cpp
-  impl/plugin/blue_codegen_585a103d.cpp
   impl/plugin/blue_codegen_runtime.cpp
   )
 
